@@ -99,6 +99,24 @@ class Game:
         self.player = Player(101, 100)
         self.claimedColor = (150, 150, 0)
         self.semiColor = (150, 200, 0)
+
+        self.leftButton = pg.Rect(0, 0, 100, 100)
+        self.leftButton.centerx = self.screen_rect.centerx - 130
+        self.leftButton.centery = self.screen_rect.centery + 350
+        self.leftButton_radius = 10
+        self.rightButton = pg.Rect(0, 0, 100, 100)
+        self.rightButton.centerx = self.screen_rect.centerx + 130
+        self.rightButton.centery = self.screen_rect.centery + 350
+        self.rightButton_radius = 10
+        self.upButton = pg.Rect(0, 0, 100, 100)
+        self.upButton.centerx = self.screen_rect.centerx
+        self.upButton.centery = self.screen_rect.centery + 250
+        self.upButton_radius = 10
+        self.downButton = pg.Rect(0, 0, 100, 100)
+        self.downButton.centerx = self.screen_rect.centerx
+        self.downButton.centery = self.screen_rect.centery + 450
+        self.downButton_radius = 10
+                
         self.map = [[0 for i in range(200)] for e in range(200)]
         self.map[99][100] = 1
         self.map[100][100] = 1
@@ -118,7 +136,7 @@ class Game:
             self.map[0][x] = -1
             self.map[199][x] = -1
 
-    async def draw(self):
+    def draw(self):
         self.screen.fill(self.bg_color)
         if time.time() - self.player.lastUpdate >= 0.12:
             self.player.move()
@@ -190,9 +208,13 @@ class Game:
                     pg.draw.rect(self.screen, (0, 0, 255), (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
                     
         self.screen.blit(self.player.playerSprite, self.player.playerSprite_rect)
-        
         self.player.progress.currentVal = self.player.owned
-        #print(self.player.progress.currentValue)
+
+        pg.draw.rect(self.screen, (0, 0, 0), self.leftButton, border_radius=self.leftButton_radius)
+        pg.draw.rect(self.screen, (0, 0, 0), self.rightButton, border_radius=self.rightButton_radius)
+        pg.draw.rect(self.screen, (0, 0, 0), self.upButton, border_radius=self.upButton_radius)
+        pg.draw.rect(self.screen, (0, 0, 0), self.downButton, border_radius=self.downButton_radius)
+
         self.player.progress.draw()
 
         return True
@@ -210,6 +232,14 @@ async def main():
                 if menu.playBtn.collidepoint(event.pos):
                     menu.show_menu = False
                     print("play button clicked")
+                elif game.leftButton.collidepoint(event.pos) and not game.player.direction == "right":
+                    game.player.direction = "left"
+                elif game.rightButton.collidepoint(event.pos) and not game.player.direction == "left":
+                    game.player.direction = "right"
+                elif game.upButton.collidepoint(event.pos) and not game.player.direction == "down":
+                    game.player.direction = "up"
+                elif game.downButton.collidepoint(event.pos) and not game.player.direction == "up":
+                    game.player.direction = "down"
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_UP and not game.player.direction == "down":
                     game.player.direction = "up"
@@ -223,12 +253,13 @@ async def main():
         if menu.show_menu:
             menu.draw()
         else:
-            dead = not await game.draw()
+            dead = not game.draw()
             if dead:
                 menu.show_menu = True
                 game = Game()
 
         pg.display.update()
         clock.tick(60)
+        await asyncio.sleep(0)
 
 asyncio.run(main())
