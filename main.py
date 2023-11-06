@@ -21,10 +21,19 @@ class ProgressBar:
         self.progressColor = progressColor
         self.maxVal = maxVal
         self.currentVal = currentVal
+        self.percentLabel = pg.font.Font(None, 50).render(str(float(self.currentVal / self.maxVal * 100)) + "%", True, (255, 255, 255))
+        self.percentLabel_rect = self.percentLabel.get_rect()
+        self.percentLabel_rect.left = 0
+        self.percentLabel_rect.top = 0
 
     def draw(self):
         pg.draw.rect(self.screen, self.color, (self.x, self.y, self.width, self.height))
         pg.draw.rect(self.screen, self.progressColor, (self.x, self.y, self.width * (self.currentVal / self.maxVal), self.height))
+        self.percentLabel = pg.font.Font(None, 50).render(str(float(round((self.currentVal / self.maxVal * 100), 2))) + "%", True, (255, 255, 255))
+        self.percentLabel_rect = self.percentLabel.get_rect()
+        self.percentLabel_rect.left = 0
+        self.percentLabel_rect.top = 0
+        self.screen.blit(self.percentLabel, self.percentLabel_rect)
 
 class Menu:
     def __init__(self):
@@ -56,7 +65,7 @@ class Menu:
         self.screen.blit(self.playSprite,(self.playBtn.centerx - 50, self.playBtn.top))
 
 class Player:
-    def __init__(self, x, y, claimedColor, claimedNum, ai=False):
+    def __init__(self, x, y, claimedColor, claimedNum, mapSize, ai=False):
         self.screen = pg.display.get_surface()
         self.screen_rect = self.screen.get_rect()
         self.playerSprite = pg.image.load("sprites/paperioSprite.png").convert_alpha()
@@ -70,7 +79,7 @@ class Player:
         self.movementFromCenter = [0, 0]
         self.lastUpdate = time.time()
         self.trail = []
-        self.progress = ProgressBar(0, 0, 500, 50, (0, 0, 0), (255, 0, 0), 40000, 0)
+        self.progress = ProgressBar(0, 0, 500, 50, (0, 0, 0), (255, 0, 0), mapSize**2, 0)
         self.owned = 9
         self.claimedColor = claimedColor
         self.semiColor = (claimedColor[0] + 50, claimedColor[1] + 50, claimedColor[2] + 50)
@@ -122,7 +131,8 @@ class Game:
         self.bg_color = (200, 200, 200)
         self.font = pg.font.Font(None, 100)
         self.text_color = (255, 200, 0)
-        self.player = Player(101, 100, (150, 150, 0), 1)
+        self.mapSize = 100
+        self.player = Player(51, 50, (150, 150, 0), 1, self.mapSize)
         #self.claimedColor = (150, 150, 0)
         #self.semiColor = (150, 200, 0)
 
@@ -142,22 +152,22 @@ class Game:
         self.downButton.centerx = self.screen_rect.centerx
         self.downButton.centery = self.screen_rect.centery + 450
         self.downButton_radius = 10
-                
-        self.map = [[0 for i in range(200)] for e in range(200)]
+           
+        self.map = [[0 for i in range(self.mapSize)] for e in range(self.mapSize)]
         self.setUp3x3(self.player.playerPos[0]-1, self.player.playerPos[1], 1)
 
         self.bots = []
         for i in range(2, 8):
-            self.bots.append(Player(100+i*4, 100, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, True))
+            self.bots.append(Player(50+i*4, 50, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
             self.setUp3x3(self.bots[i-2].playerPos[0]-1, self.bots[i-2].playerPos[1], i)
 
-        for y in range(200):
+        for y in range(self.mapSize):
             self.map[y][0] = -1
-            self.map[y][199] = -1
+            self.map[y][self.mapSize-1] = -1
             
-        for x in range(200):
+        for x in range(self.mapSize):
             self.map[0][x] = -1
-            self.map[199][x] = -1
+            self.map[self.mapSize-1][x] = -1
 
     def setUp3x3(self, x, y, claimedNum):
         self.map[y][x] = claimedNum
@@ -175,8 +185,8 @@ class Game:
             if time.time() - bot.lastUpdate > 0.12:
                 if bot.move(self.map):
                     self.bots.remove(bot)
-                    for y in range(200):
-                        for x in range(200):
+                    for y in range(self.mapSize):
+                        for x in range(self.mapSize):
                             if self.map[y][x] == bot.claimedNum or self.map[y][x] == bot.trailNum:
                                 self.map[y][x] = 0
                     continue
@@ -184,8 +194,8 @@ class Game:
 
             if self.map[bot.playerPos[1]][bot.playerPos[0]] == -1:
                 self.bots.remove(bot)
-                for y in range(200):
-                    for x in range(200):
+                for y in range(self.mapSize):
+                    for x in range(self.mapSize):
                         if self.map[y][x] == bot.claimedNum or self.map[y][x] == bot.trailNum:
                             self.map[y][x] = 0
                 continue
@@ -196,15 +206,15 @@ class Game:
                 return True
             elif type(self.map[bot.playerPos[1]][bot.playerPos[0]]) == float and self.map[bot.playerPos[1]][bot.playerPos[0]] != bot.trailNum:
                 stopped = False
-                for y in range(200):
-                    for x in range(200):
+                for y in range(self.mapSize):
+                    for x in range(self.mapSize):
                         for bbot in self.bots:
                             if self.map[y][x] == bbot.trailNum:
                                 print(self.map[y][x], bot.trailNum)
                                 self.map[y][x] = 0
                                 self.bots.remove(bbot)
-                                for y in range(200):
-                                    for x in range(200):
+                                for y in range(self.mapSize):
+                                    for x in range(self.mapSize):
                                         if self.map[y][x] == bbot.claimedNum or self.map[y][x] == bbot.trailNum:
                                             self.map[y][x] = 0
                                 stopped = True
@@ -217,9 +227,9 @@ class Game:
                         
             elif self.map[bot.playerPos[1]][bot.playerPos[0]] == bot.claimedNum and len(bot.trail) > 0:
                 trailsY = {}
-                smallestY = 200
+                smallestY = self.mapSize
                 biggestY = 0
-                smallestX = 200
+                smallestX = self.mapSize
                 biggestX = 0
                 for trail in bot.trail:
                     if trail[1] not in trailsY:
@@ -244,8 +254,8 @@ class Game:
                             self.map[y][x] = bot.claimedNum
 
                 fullY = {}
-                for y in range(200):
-                    for x in range(200):
+                for y in range(self.mapSize):
+                    for x in range(self.mapSize):
                         if self.map[y][x] == bot.claimedNum:
                             if y not in fullY:
                                 fullY[y] = [x]
@@ -282,9 +292,9 @@ class Game:
 
             if self.map[self.player.playerPos[1]][self.player.playerPos[0]] == 1 and len(self.player.trail) > 0:
                 trailsY = {}
-                smallestY = 200
+                smallestY = self.mapSize
                 biggestY = 0
-                smallestX = 200
+                smallestX = self.mapSize
                 biggestX = 0
                 for trail in self.player.trail:
                     if trail[1] not in trailsY:
@@ -310,8 +320,8 @@ class Game:
                             self.map[y][x] = 1
 
                 fullY = {}
-                for y in range(200):
-                    for x in range(200):
+                for y in range(self.mapSize):
+                    for x in range(self.mapSize):
                         if self.map[y][x] == 1:
                             if y not in fullY:
                                 fullY[y] = [x]
@@ -327,16 +337,17 @@ class Game:
                 self.player.trail = []
 
         self.player.owned = 0
+        mapSizeScale = 200 / self.mapSize
 
-        for y in range(200):
-            for x in range(200):
+        for y in range(self.mapSize):
+            for x in range(self.mapSize):
                 if self.map[y][x] == 1:
                     self.player.owned += 1
-                    pg.draw.rect(self.screen, self.player.claimedColor, (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
+                    pg.draw.rect(self.screen, self.player.claimedColor, (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
                 elif self.map[y][x] == 1.5:
-                    pg.draw.rect(self.screen, self.player.semiColor, (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
+                    pg.draw.rect(self.screen, self.player.semiColor, (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
                 elif self.map[y][x] == -1:
-                    pg.draw.rect(self.screen, (0, 0, 255), (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
+                    pg.draw.rect(self.screen, (0, 0, 255), (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
                 else:
                     for bot in self.bots:
                         if self.map[self.player.playerPos[1]][self.player.playerPos[0]] == bot.claimedNum:
@@ -345,17 +356,17 @@ class Game:
                             bot.owned -= 1
                         elif self.map[self.player.playerPos[1]][self.player.playerPos[0]] == bot.trailNum:
                             self.bots.remove(bot)
-                            for y in range(200):
-                                for x in range(200):
+                            for y in range(self.mapSize):
+                                for x in range(self.mapSize):
                                     if self.map[y][x] == bot.claimedNum or self.map[y][x] == bot.trailNum:
                                         self.map[y][x] = 0
                             self.player.owned += 1
                             self.map[self.player.playerPos[1]][self.player.playerPos[0]] = 1.5
-                            pg.draw.rect(self.screen, bot.semiColor, (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
+                            pg.draw.rect(self.screen, bot.semiColor, (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
                         if bot.claimedNum == self.map[y][x]:
-                            pg.draw.rect(self.screen, bot.claimedColor, (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
+                            pg.draw.rect(self.screen, bot.claimedColor, (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
                         elif bot.trailNum == self.map[y][x]:
-                            pg.draw.rect(self.screen, bot.semiColor, (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
+                            pg.draw.rect(self.screen, bot.semiColor, (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
                     
         self.screen.blit(self.player.playerSprite, self.player.playerSprite_rect)
         self.player.progress.currentVal = self.player.owned
