@@ -86,7 +86,7 @@ class Player:
         elif direction == "right" and self.direction == "left": return True
         else: return False
 
-    def move(self):
+    def move(self, gmap=None):
         if self.ai and time.time() - self.lastTurn > 0.8:
             while True:
                 direction = random.choice(["up", "down", "left", "right"])
@@ -94,7 +94,6 @@ class Player:
                     self.direction = direction
                     break
             self.lastTurn = time.time()
-            print(self.direction)
 
         d = self.direction
         if d == "up":
@@ -109,6 +108,10 @@ class Player:
         else:
             self.movementFromCenter[0] -= 50
             self.playerPos[0] += 1
+
+        if gmap != None:
+            if gmap[self.playerPos[1]][self.playerPos[0]] == self.trailNum:
+                return True
 
         self.lastUpdate = time.time()
 
@@ -144,8 +147,8 @@ class Game:
         self.setUp3x3(self.player.playerPos[0]-1, self.player.playerPos[1], 1)
 
         self.bots = []
-        for i in range(2, 3):
-            self.bots.append(Player(105, 100, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, True))
+        for i in range(2, 8):
+            self.bots.append(Player(100+i*4, 100, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, True))
             self.setUp3x3(self.bots[i-2].playerPos[0]-1, self.bots[i-2].playerPos[1], i)
 
         for y in range(200):
@@ -170,7 +173,13 @@ class Game:
     def drawBots(self):
         for bot in self.bots:
             if time.time() - bot.lastUpdate > 0.12:
-                bot.move()
+                if bot.move(self.map):
+                    self.bots.remove(bot)
+                    for y in range(200):
+                        for x in range(200):
+                            if self.map[y][x] == bot.claimedNum or self.map[y][x] == bot.trailNum:
+                                self.map[y][x] = 0
+                    continue
                 bot.lastUpdate = time.time()
 
             if self.map[bot.playerPos[1]][bot.playerPos[0]] == -1:
@@ -185,6 +194,27 @@ class Game:
                 bot.trail.append(bot.playerPos.copy())
             elif self.map[bot.playerPos[1]][bot.playerPos[0]] == 1.5:
                 return True
+            elif type(self.map[bot.playerPos[1]][bot.playerPos[0]]) == float and self.map[bot.playerPos[1]][bot.playerPos[0]] != bot.trailNum:
+                stopped = False
+                for y in range(200):
+                    for x in range(200):
+                        for bbot in self.bots:
+                            if self.map[y][x] == bbot.trailNum:
+                                print(self.map[y][x], bot.trailNum)
+                                self.map[y][x] = 0
+                                self.bots.remove(bbot)
+                                for y in range(200):
+                                    for x in range(200):
+                                        if self.map[y][x] == bbot.claimedNum or self.map[y][x] == bbot.trailNum:
+                                            self.map[y][x] = 0
+                                stopped = True
+                                break
+                        if stopped:
+                            break
+                    if stopped:
+                        break
+                continue
+                        
             elif self.map[bot.playerPos[1]][bot.playerPos[0]] == bot.claimedNum and len(bot.trail) > 0:
                 trailsY = {}
                 smallestY = 200
@@ -310,7 +340,7 @@ class Game:
                 else:
                     for bot in self.bots:
                         if self.map[self.player.playerPos[1]][self.player.playerPos[0]] == bot.claimedNum:
-                            pg.draw.rect(self.screen, bot.claimedColor, (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
+                            #pg.draw.rect(self.screen, bot.claimedColor, (x*50-4825+self.player.movementFromCenter[0], y*50-4525+self.player.movementFromCenter[1], 50, 50))
                             self.player.owned += 1
                             bot.owned -= 1
                         elif self.map[self.player.playerPos[1]][self.player.playerPos[0]] == bot.trailNum:
