@@ -9,6 +9,30 @@ screen = pg.display.set_mode((500, 1000))
 pg.display.set_caption("Paper.io")
 clock = pg.time.Clock()
 
+class MiniMap:
+    def __init__(self, mapSize):
+        self.screen = pg.display.get_surface()
+        self.screen_rect = self.screen.get_rect()
+        self.mapSize = mapSize
+        self.physSize = 100
+        
+    def draw(self, gmap, player, bots):
+        pg.draw.rect(self.screen, (255, 255, 255), (10, 60, self.physSize, self.physSize))
+        for y in range(self.mapSize):
+            for x in range(self.mapSize):
+                if gmap[y][x] == 1:
+                    pg.draw.rect(self.screen, player.claimedColor, (10 + x, 60 + y, 2, 2))
+                elif gmap[y][x] == 1.5:
+                    pg.draw.rect(self.screen, player.semiColor, (10 + x, 60 + y, 2, 2))
+                elif gmap[y][x] == -1:
+                    pg.draw.rect(self.screen, (0, 0, 255), (10 + x, 60 + y, 2, 2))
+                else:
+                    for bot in bots:
+                        if bot.claimedNum == gmap[y][x]:
+                            pg.draw.rect(self.screen, bot.claimedColor, (10 + x, 60 + y, 2, 2))
+                        elif bot.trailNum == gmap[y][x]:
+                            pg.draw.rect(self.screen, bot.semiColor, (10 + x, 60 + y, 2, 2))
+
 class ProgressBar:
     def __init__(self, x, y, width, height, color, progressColor, maxVal, currentVal):
         self.screen = pg.display.get_surface()
@@ -87,6 +111,7 @@ class Player:
         self.trailNum = claimedNum + 0.5
         self.ai = ai
         self.lastTurn = time.time()
+        self.minimap = MiniMap(mapSize)
 
     def getOpporsiteDirection(self, direction):
         if direction == "up" and self.direction == "down": return True
@@ -272,6 +297,8 @@ class Game:
                 pg.draw.rect(self.screen, bot.claimedColor, (trail[0] * 50 + bot.movementFromCenter[0], trail[1] * 50 + bot.movementFromCenter[1], 50, 50))
 
             pg.draw.rect(self.screen, bot.claimedColor, (bot.playerPos[0] * 50 + bot.movementFromCenter[0], bot.playerPos[1] * 50 + bot.movementFromCenter[1], 50, 50))
+
+        self.player.minimap.draw(self.map, self.player, self.bots)
 
         return False
 
