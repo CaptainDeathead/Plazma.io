@@ -298,8 +298,6 @@ class Game:
 
             pg.draw.rect(self.screen, bot.claimedColor, (bot.playerPos[0] * 50 + bot.movementFromCenter[0], bot.playerPos[1] * 50 + bot.movementFromCenter[1], 50, 50))
 
-        self.player.minimap.draw(self.map, self.player, self.bots)
-
         return False
 
     def draw(self):
@@ -404,6 +402,7 @@ class Game:
         pg.draw.rect(self.screen, (0, 0, 0), self.downButton, border_radius=self.downButton_radius)
 
         self.player.progress.draw()
+        self.player.minimap.draw(self.map, self.player, self.bots)
 
         return True
 
