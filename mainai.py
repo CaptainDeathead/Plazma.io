@@ -145,9 +145,24 @@ class Player:
             self.movementFromCenter[0] -= 50
             self.playerPos[0] += 1
 
+        #if gmap != None:
+        #    if gmap[self.playerPos[1]][self.playerPos[0]] == self.trailNum:
+        #        return "dead"
+        #    elif gmap[self.playerPos[1]][self.playerPos[0]] == -1:
+        #        return "dead"
+        #    elif gmap[self.playerPos[1]][self.playerPos[0]] == self.claimedNum:
+        #        return "done"
+
         if gmap != None:
-            if gmap[self.playerPos[1]][self.playerPos[0]] == self.trailNum:
-                return True
+            try:
+                if gmap[self.playerPos[1]][self.playerPos[0]] == self.trailNum: return "dead"
+            except: return "dead"
+            try:
+                if gmap[self.playerPos[1]][self.playerPos[0]] == -1: return "dead"
+            except: return "dead"
+            try:
+                if gmap[self.playerPos[1]][self.playerPos[0]] == self.claimedNum: return "done"
+            except: pass
 
         self.lastUpdate = time.time()
 
@@ -209,9 +224,11 @@ class Game:
 
     def drawBots(self):
         for bot in self.bots:
+            move = None
             if bot.dead: continue
             if time.time() - bot.lastUpdate > 0.12:
-                if bot.move(self.map):
+                move = bot.move(self.map)
+                if move == "dead":
                     #self.bots.remove(bot)
                     bot.dead = True
                     for y in range(self.mapSize):
@@ -256,7 +273,7 @@ class Game:
                         break
                 continue
                         
-            elif self.map[bot.playerPos[1]][bot.playerPos[0]] == bot.claimedNum and len(bot.trail) > 0:
+            if move == "done":
                 trailsY = {}
                 smallestY = self.mapSize
                 biggestY = 0

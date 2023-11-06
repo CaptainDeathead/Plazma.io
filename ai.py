@@ -4,6 +4,7 @@ import pickle
 import random
 from mainai import Game, Player, ProgressBar, MiniMap
 import pygame as pg
+import time
 
 pg.init()
 
@@ -23,7 +24,9 @@ def eval_genomes(genomes, config):
         game.setUp3x3(game.bots[-1].playerPos[0]-1, game.bots[-1].playerPos[1], i)
         i += 1
 
-    while len(game.bots) > 0:
+    startTime = time.time()
+
+    while len(game.bots) > 0 and time.time() - startTime < 30:
         for i, bot in enumerate(game.bots):
             if bot.dead:
                 nets.pop(i)

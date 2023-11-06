@@ -110,8 +110,17 @@ class Player:
         self.claimedNum = claimedNum
         self.trailNum = claimedNum + 0.5
         self.ai = ai
-        self.lastTurn = time.time()
+        self.lastTurn = 0
         self.minimap = MiniMap(mapSize)
+
+        self.turns = {
+            "up": ["up", "right", "down", "left"],
+            "right": ["right", "down", "left", "up"],
+            "down": ["down", "left", "up", "right"],
+            "left": ["left", "up", "right", "down"]
+        }
+        self.currentTurn = self.turns[random.choice(["up", "left", "right"])]
+        self.currentTurnIndex = 0
 
     def getOpporsiteDirection(self, direction):
         if direction == "up" and self.direction == "down": return True
@@ -122,11 +131,19 @@ class Player:
 
     def move(self, gmap=None):
         if self.ai and time.time() - self.lastTurn > 0.8:
-            while True:
-                direction = random.choice(["up", "down", "left", "right"])
-                if not self.getOpporsiteDirection(direction):
-                    self.direction = direction
-                    break
+            if self.currentTurnIndex == 4:
+                while True:
+                    direction = random.choice(["up", "down", "left", "right"])
+                    if not self.getOpporsiteDirection(direction):
+                        self.direction = direction
+                        break
+                self.currentTurn = self.turns[self.direction]
+                self.currentTurnIndex = 0
+            else:
+                self.direction = self.currentTurn[self.currentTurnIndex]
+                print(self.direction, self.currentTurn)
+                self.currentTurnIndex += 1
+
             self.lastTurn = time.time()
 
         d = self.direction
@@ -145,7 +162,11 @@ class Player:
 
         if gmap != None:
             if gmap[self.playerPos[1]][self.playerPos[0]] == self.trailNum:
-                return True
+                return "dead"
+            elif gmap[self.playerPos[1]][self.playerPos[0]] == -1:
+                return "dead"
+            elif gmap[self.playerPos[1]][self.playerPos[0]] == self.claimedNum:
+                return "done"
 
         self.lastUpdate = time.time()
 
@@ -182,8 +203,8 @@ class Game:
         self.setUp3x3(self.player.playerPos[0]-1, self.player.playerPos[1], 1)
 
         self.bots = []
-        for i in range(2, 8):
-            self.bots.append(Player(50+i*4, 50, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
+        for i in range(2, 3):
+            self.bots.append(Player(random.randint(5, 95), random.randint(5, 95), (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
             self.setUp3x3(self.bots[i-2].playerPos[0]-1, self.bots[i-2].playerPos[1], i)
 
         for y in range(self.mapSize):
@@ -207,8 +228,10 @@ class Game:
 
     def drawBots(self):
         for bot in self.bots:
+            move = None
             if time.time() - bot.lastUpdate > 0.12:
-                if bot.move(self.map):
+                move = bot.move(self.map)
+                if move == "dead":
                     self.bots.remove(bot)
                     for y in range(self.mapSize):
                         for x in range(self.mapSize):
@@ -235,7 +258,7 @@ class Game:
                     for x in range(self.mapSize):
                         for bbot in self.bots:
                             if self.map[y][x] == bbot.trailNum:
-                                print(self.map[y][x], bot.trailNum)
+                                #print(self.map[y][x], bot.trailNum)
                                 self.map[y][x] = 0
                                 self.bots.remove(bbot)
                                 for y in range(self.mapSize):
@@ -250,7 +273,8 @@ class Game:
                         break
                 continue
                         
-            elif self.map[bot.playerPos[1]][bot.playerPos[0]] == bot.claimedNum and len(bot.trail) > 0:
+            if move == "done":
+                print("A")
                 trailsY = {}
                 smallestY = self.mapSize
                 biggestY = 0
