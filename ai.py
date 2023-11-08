@@ -26,7 +26,7 @@ def eval_genomes(genomes, config):
 
     startTime = time.time()
 
-    while len(game.bots) > 0 and time.time() - startTime < 30:
+    while len(game.bots) > 0 and time.time() - startTime < 60:
         for i, bot in enumerate(game.bots):
             if bot.dead:
                 nets.pop(i)
@@ -88,8 +88,10 @@ def run(config_path):
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
+    # save them in checkpoints folder
+    p.add_reporter(neat.Checkpointer(15, filename_prefix='checkpoints/neat-checkpoint-'))
 
-    winner = p.run(eval_genomes, 50)
+    winner = p.run(eval_genomes, 500)
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)

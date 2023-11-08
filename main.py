@@ -14,24 +14,24 @@ class MiniMap:
         self.screen = pg.display.get_surface()
         self.screen_rect = self.screen.get_rect()
         self.mapSize = mapSize
-        self.physSize = 100
-        
+        self.physSize = 133
+
     def draw(self, gmap, player, bots):
         pg.draw.rect(self.screen, (255, 255, 255), (10, 60, self.physSize, self.physSize))
         for y in range(self.mapSize):
             for x in range(self.mapSize):
                 if gmap[y][x] == 1:
-                    pg.draw.rect(self.screen, player.claimedColor, (10 + x, 60 + y, 2, 2))
+                    pg.draw.rect(self.screen, player.claimedColor, (10 + x * (1 + 1/3), 60 + y * (1 + 1/3), 3, 3))
                 elif gmap[y][x] == 1.5:
-                    pg.draw.rect(self.screen, player.semiColor, (10 + x, 60 + y, 2, 2))
+                    pg.draw.rect(self.screen, player.semiColor, (10 + x * (1 + 1/3), 60 + y * (1 + 1/3), 3, 3))
                 elif gmap[y][x] == -1:
-                    pg.draw.rect(self.screen, (0, 0, 255), (10 + x, 60 + y, 2, 2))
+                    pg.draw.rect(self.screen, (0, 0, 255), (10 + x * (1 + 1/3), 60 + y * (1 + 1/3), 3, 3))
                 else:
                     for bot in bots:
                         if bot.claimedNum == gmap[y][x]:
-                            pg.draw.rect(self.screen, bot.claimedColor, (10 + x, 60 + y, 2, 2))
+                            pg.draw.rect(self.screen, bot.claimedColor, (10 + x * (1 + 1/3), 60 + y * (1 + 1/3), 3, 3))
                         elif bot.trailNum == gmap[y][x]:
-                            pg.draw.rect(self.screen, bot.semiColor, (10 + x, 60 + y, 2, 2))
+                            pg.draw.rect(self.screen, bot.semiColor, (10 + x * (1 + 1/3), 60 + y * (1 + 1/3), 3, 3))
 
 class ProgressBar:
     def __init__(self, x, y, width, height, color, progressColor, maxVal, currentVal):
@@ -47,16 +47,16 @@ class ProgressBar:
         self.currentVal = currentVal
         self.percentLabel = pg.font.Font(None, 50).render(str(float(self.currentVal / self.maxVal * 100)) + "%", True, (255, 255, 255))
         self.percentLabel_rect = self.percentLabel.get_rect()
-        self.percentLabel_rect.left = 0
-        self.percentLabel_rect.top = 0
+        self.percentLabel_rect.left = 10
+        self.percentLabel_rect.top = 9
 
     def draw(self):
         pg.draw.rect(self.screen, self.color, (self.x, self.y, self.width, self.height))
         pg.draw.rect(self.screen, self.progressColor, (self.x, self.y, self.width * (self.currentVal / self.maxVal), self.height))
         self.percentLabel = pg.font.Font(None, 50).render(str(float(round((self.currentVal / self.maxVal * 100), 2))) + "%", True, (255, 255, 255))
         self.percentLabel_rect = self.percentLabel.get_rect()
-        self.percentLabel_rect.left = 0
-        self.percentLabel_rect.top = 0
+        self.percentLabel_rect.left = 10
+        self.percentLabel_rect.top = 9
         self.screen.blit(self.percentLabel, self.percentLabel_rect)
 
 class Menu:
@@ -112,6 +112,13 @@ class Player:
         self.ai = ai
         self.lastTurn = 0
         self.minimap = MiniMap(mapSize)
+        self.turnTime = random.randint(3, 20)/10
+        self.kills = 0
+        self.killsLbl = pg.font.Font(None, 50).render(f"Kills: {0}", True, (255, 255, 255))
+        self.killsLbl_rect = self.killsLbl.get_rect()
+        self.killsLbl_rect.left = 350
+        self.killsLbl_rect.top = 60
+        self.doneMoves = 0
 
         self.turns = {
             "up": ["up", "right", "down", "left"],
@@ -130,18 +137,21 @@ class Player:
         else: return False
 
     def move(self, gmap=None):
-        if self.ai and time.time() - self.lastTurn > 0.8:
-            if self.currentTurnIndex == 4:
+        if self.ai and time.time() - self.lastTurn > self.turnTime:
+            self.doneMoves += 1
+
+            if self.currentTurnIndex >= 4:
                 while True:
                     direction = random.choice(["up", "down", "left", "right"])
                     if not self.getOpporsiteDirection(direction):
                         self.direction = direction
                         break
                 self.currentTurn = self.turns[self.direction]
-                self.currentTurnIndex = 0
+                self.currentTurnIndex = 1
+                self.turnTime = random.randint(3, 20)/(10-self.doneMoves/100)
             else:
                 self.direction = self.currentTurn[self.currentTurnIndex]
-                print(self.direction, self.currentTurn)
+                #print(self.direction, self.currentTurn)
                 self.currentTurnIndex += 1
 
             self.lastTurn = time.time()
@@ -174,7 +184,8 @@ class Game:
     def __init__(self):
         self.screen = pg.display.get_surface()
         self.screen_rect = self.screen.get_rect()
-        self.bg_color = (200, 200, 200)
+        self.bg_color = (0, 200, 200)
+        self.gridColor = (0, 100, 100)
         self.font = pg.font.Font(None, 100)
         self.text_color = (255, 200, 0)
         self.mapSize = 100
@@ -198,19 +209,24 @@ class Game:
         self.downButton.centerx = self.screen_rect.centerx
         self.downButton.centery = self.screen_rect.centery + 450
         self.downButton_radius = 10
-           
+        self.i = 2
+
         self.map = [[0 for i in range(self.mapSize)] for e in range(self.mapSize)]
         self.setUp3x3(self.player.playerPos[0]-1, self.player.playerPos[1], 1)
 
         self.bots = []
-        for i in range(2, 3):
-            self.bots.append(Player(random.randint(5, 95), random.randint(5, 95), (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
+        for i in range(2, 7):
+            bx, by =  random.randint(5, 95), random.randint(5, 95)
+            while self.map[by][bx] != 0:
+                bx, by = random.randint(5, 95), random.randint(5, 95)
+            self.bots.append(Player(bx, by, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
             self.setUp3x3(self.bots[i-2].playerPos[0]-1, self.bots[i-2].playerPos[1], i)
+            self.i = i
 
         for y in range(self.mapSize):
             self.map[y][0] = -1
             self.map[y][self.mapSize-1] = -1
-            
+
         for x in range(self.mapSize):
             self.map[0][x] = -1
             self.map[self.mapSize-1][x] = -1
@@ -237,6 +253,13 @@ class Game:
                         for x in range(self.mapSize):
                             if self.map[y][x] == bot.claimedNum or self.map[y][x] == bot.trailNum:
                                 self.map[y][x] = 0
+                    self.i += 1
+                    i = self.i
+                    bx, by =  random.randint(5, 95), random.randint(5, 95)
+                    while self.map[by][bx] != 0:
+                        bx, by = random.randint(5, 95), random.randint(5, 95)
+                    self.bots.append(Player(bx, by, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
+                    self.setUp3x3(self.bots[-1].playerPos[0]-1, self.bots[-1].playerPos[1], i)
                     continue
                 bot.lastUpdate = time.time()
 
@@ -246,8 +269,15 @@ class Game:
                     for x in range(self.mapSize):
                         if self.map[y][x] == bot.claimedNum or self.map[y][x] == bot.trailNum:
                             self.map[y][x] = 0
+                self.i += 1
+                i = self.i
+                bx, by =  random.randint(5, 95), random.randint(5, 95)
+                while self.map[by][bx] != 0:
+                    bx, by = random.randint(5, 95), random.randint(5, 95)
+                self.bots.append(Player(bx, by, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
+                self.setUp3x3(self.bots[-1].playerPos[0]-1, self.bots[-1].playerPos[1], i)
                 continue
-            elif type(self.map[bot.playerPos[1]][bot.playerPos[0]]) == int:
+            elif type(self.map[bot.playerPos[1]][bot.playerPos[0]]) == int and self.map[bot.playerPos[1]][bot.playerPos[0]] != bot.claimedNum:
                 self.map[bot.playerPos[1]][bot.playerPos[0]] = bot.trailNum
                 bot.trail.append(bot.playerPos.copy())
             elif self.map[bot.playerPos[1]][bot.playerPos[0]] == 1.5:
@@ -266,15 +296,22 @@ class Game:
                                         if self.map[y][x] == bbot.claimedNum or self.map[y][x] == bbot.trailNum:
                                             self.map[y][x] = 0
                                 stopped = True
+                                self.i += 1
+                                i = self.i
+                                bx, by =  random.randint(5, 95), random.randint(5, 95)
+                                while self.map[by][bx] != 0:
+                                    bx, by = random.randint(5, 95), random.randint(5, 95)
+                                self.bots.append(Player(bx, by, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
+                                self.setUp3x3(self.bots[-1].playerPos[0]-1, self.bots[-1].playerPos[1], i)
                                 break
                         if stopped:
                             break
                     if stopped:
                         break
                 continue
-                        
+
             if move == "done":
-                print("A")
+                #print("A")
                 trailsY = {}
                 smallestY = self.mapSize
                 biggestY = 0
@@ -317,6 +354,8 @@ class Game:
                         for x in range(fullY[y][i], fullY[y][i+1]):
                             self.map[y][x] = bot.claimedNum
 
+                bot.trail = []
+
             for trail in bot.trail:
                 pg.draw.rect(self.screen, bot.claimedColor, (trail[0] * 50 + bot.movementFromCenter[0], trail[1] * 50 + bot.movementFromCenter[1], 50, 50))
 
@@ -325,8 +364,24 @@ class Game:
         return False
 
     def draw(self):
-        #print("E")
         self.screen.fill(self.bg_color)
+
+        #for x in range(0, 500, 50):
+        #    x += self.player.movementFromCenter[0]
+        #    if x < 0:
+        #        x = 500 + x
+        #    elif x > 500:
+        #        x = x - 500
+        #    pg.draw.line(self.screen, self.gridColor, (x, 0), (x, 1000), 3)
+        #
+        #for y in range(0, 1000, 50):
+        #    y += self.player.movementFromCenter[1]
+        #    if y < 0:
+        #        y = 1000 + y
+        #    elif y > 1000:
+        #        y = y - 1000
+        #    pg.draw.line(self.screen, self.gridColor, (0, y), (500, y), 3)
+
         if self.drawBots(): return False
         if time.time() - self.player.lastUpdate >= 0.12:
             self.player.move()
@@ -334,9 +389,9 @@ class Game:
             if self.map[self.player.playerPos[1]][self.player.playerPos[0]] == -1 or self.map[self.player.playerPos[1]][self.player.playerPos[0]] == 1.5:
                 return False
 
-            if self.map[self.player.playerPos[1]][self.player.playerPos[0]] == 0:
+            if self.map[self.player.playerPos[1]][self.player.playerPos[0]] == 0 or (type(self.map[self.player.playerPos[1]][self.player.playerPos[0]]) == int and self.map[self.player.playerPos[1]][self.player.playerPos[0]] > 1):
                 self.map[self.player.playerPos[1]][self.player.playerPos[0]] = 1.5
-                
+
                 self.player.trail.append((self.player.playerPos[0], self.player.playerPos[1]))
 
             if self.map[self.player.playerPos[1]][self.player.playerPos[0]] == 1 and len(self.player.trail) > 0:
@@ -409,6 +464,15 @@ class Game:
                                 for x in range(self.mapSize):
                                     if self.map[y][x] == bot.claimedNum or self.map[y][x] == bot.trailNum:
                                         self.map[y][x] = 0
+                            self.player.kills += 1
+                            self.player.killsLbl = pg.font.Font(None, 50).render(f"Kills: {self.player.kills}", True, (255, 255, 255))
+                            self.i += 1
+                            i = self.i
+                            bx, by =  random.randint(5, 95), random.randint(5, 95)
+                            while self.map[by][bx] != 0:
+                                bx, by = random.randint(5, 95), random.randint(5, 95)
+                            self.bots.append(Player(bx, by, (random.randint(0, 205), random.randint(0, 205), random.randint(0, 205)), i, self.mapSize, True))
+                            self.setUp3x3(self.bots[-1].playerPos[0]-1, self.bots[-1].playerPos[1], i)
                             self.player.owned += 1
                             self.map[self.player.playerPos[1]][self.player.playerPos[0]] = 1.5
                             pg.draw.rect(self.screen, bot.semiColor, (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
@@ -416,17 +480,21 @@ class Game:
                             pg.draw.rect(self.screen, bot.claimedColor, (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
                         elif bot.trailNum == self.map[y][x]:
                             pg.draw.rect(self.screen, bot.semiColor, (x*50-2325+self.player.movementFromCenter[0], y*50-2025+self.player.movementFromCenter[1], 50, 50))
-                    
+
+        for bot in self.bots:
+            pg.draw.rect(self.screen, bot.semiColor, (bot.playerPos[0]*50-2325+self.player.movementFromCenter[0], bot.playerPos[1]*50-2025+self.player.movementFromCenter[1], 50, 50))
+
         self.screen.blit(self.player.playerSprite, self.player.playerSprite_rect)
         self.player.progress.currentVal = self.player.owned
 
-        pg.draw.rect(self.screen, (0, 0, 0), self.leftButton, border_radius=self.leftButton_radius)
-        pg.draw.rect(self.screen, (0, 0, 0), self.rightButton, border_radius=self.rightButton_radius)
-        pg.draw.rect(self.screen, (0, 0, 0), self.upButton, border_radius=self.upButton_radius)
-        pg.draw.rect(self.screen, (0, 0, 0), self.downButton, border_radius=self.downButton_radius)
+        #pg.draw.rect(self.screen, (0, 0, 0), self.leftButton, border_radius=self.leftButton_radius)
+        #pg.draw.rect(self.screen, (0, 0, 0), self.rightButton, border_radius=self.rightButton_radius)
+        #pg.draw.rect(self.screen, (0, 0, 0), self.upButton, border_radius=self.upButton_radius)
+        #pg.draw.rect(self.screen, (0, 0, 0), self.downButton, border_radius=self.downButton_radius)
 
         self.player.progress.draw()
         self.player.minimap.draw(self.map, self.player, self.bots)
+        self.screen.blit(self.player.killsLbl, self.player.killsLbl_rect)
 
         return True
 
@@ -434,6 +502,7 @@ async def main():
     menu = Menu()
     game = Game()
     running = True
+    swipeStartPos = None
     while running:
         screen.fill((200, 200, 200))
         for event in pg.event.get():
@@ -443,14 +512,14 @@ async def main():
                 if menu.playBtn.collidepoint(event.pos):
                     menu.show_menu = False
                     print("play button clicked")
-                elif game.leftButton.collidepoint(event.pos) and not game.player.direction == "right":
-                    game.player.direction = "left"
-                elif game.rightButton.collidepoint(event.pos) and not game.player.direction == "left":
-                    game.player.direction = "right"
-                elif game.upButton.collidepoint(event.pos) and not game.player.direction == "down":
-                    game.player.direction = "up"
-                elif game.downButton.collidepoint(event.pos) and not game.player.direction == "up":
-                    game.player.direction = "down"
+                #elif game.leftButton.collidepoint(event.pos) and not game.player.direction == "right":
+                #    game.player.direction = "left"
+                #elif game.rightButton.collidepoint(event.pos) and not game.player.direction == "left":
+                #    game.player.direction = "right"
+                #elif game.upButton.collidepoint(event.pos) and not game.player.direction == "down":
+                #    game.player.direction = "up"
+                #elif game.downButton.collidepoint(event.pos) and not game.player.direction == "up":
+                #    game.player.direction = "down"
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     menu.show_menu = True
@@ -463,6 +532,28 @@ async def main():
                     game.player.direction = "left"
                 elif event.key == pg.K_RIGHT and not game.player.direction == "left":
                     game.player.direction = "right"
+
+            # check finger swipes on mobile and move player accordingly to the swipe direction
+            if event.type == pg.FINGERDOWN:
+                swipeStartPos = event.x, event.y
+            if event.type == pg.FINGERUP:
+                if swipeStartPos:
+                    swipeEndPos = event.x, event.y
+                    x1, y1 = swipeStartPos
+                    x2, y2 = swipeEndPos
+                    dx = x2 - x1
+                    dy = y2 - y1
+                    if abs(dx) > abs(dy):
+                        if dx > 0 and not game.player.direction == "left":
+                            game.player.direction = "right"
+                        elif dx < 0 and not game.player.direction == "right":
+                            game.player.direction = "left"
+                    else:
+                        if dy > 0 and not game.player.direction == "up":
+                            game.player.direction = "down"
+                        elif dy < 0 and not game.player.direction == "down":
+                            game.player.direction = "up"
+                    swipeStartPos = None
 
         if menu.show_menu:
             menu.draw()
